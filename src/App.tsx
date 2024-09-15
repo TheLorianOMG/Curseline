@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -7,8 +7,6 @@ const INITIAL_LISTS = [
   { id: '2', name: 'En progreso', tasks: [] },
   { id: '3', name: 'Completado', tasks: [] },
 ];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const App = () => {
   const [lists, setLists] = useState(INITIAL_LISTS);
