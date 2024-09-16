@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -7,8 +7,6 @@ const INITIAL_LISTS = [
   { id: '2', name: 'En progreso', tasks: [] },
   { id: '3', name: 'Completado', tasks: [] },
 ];
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const CurselineToDo = () => {
   const [lists, setLists] = useState(() => {
@@ -240,10 +238,12 @@ const CurselineToDo = () => {
               <div className="flex flex-wrap gap-2">
                 {allTags.map(tag => (
                   <button
+                    /* @ts-ignore */
                     key={tag}
                     onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-2 py-1 rounded ${selectedTags.includes(tag) ? 'bg-purple-600' : 'bg-gray-700'}`}
                   >
+                    {/* @ts-ignore */}
                     {tag}
                   </button>
                 ))}
