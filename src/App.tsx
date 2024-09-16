@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -8,11 +8,30 @@ const INITIAL_LISTS = [
   { id: '3', name: 'Completado', tasks: [] },
 ];
 
-const App = () => {
-  const [lists, setLists] = useState(INITIAL_LISTS);
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+
+const CurselineToDo = () => {
+  const [lists, setLists] = useState(() => {
+    try {
+      const savedLists = localStorage.getItem('curselineLists');
+      return savedLists ? JSON.parse(savedLists) : INITIAL_LISTS;
+    } catch (error) {
+      console.error('Error loading data from localStorage:', error);
+      return INITIAL_LISTS;
+    }
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [activeView, setActiveView] = useState('home');
+  const [newTag, setNewTag] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('curselineLists', JSON.stringify(lists));
+    } catch (error) {
+      console.error('Error saving data to localStorage:', error);
+    }
+  }, [lists]);
 
   const updateLists = useCallback((updater) => {
     setLists(prevLists => prevLists.map(updater));
@@ -29,7 +48,14 @@ const App = () => {
   const updateTask = useCallback((listId, taskId, updates) => {
     updateLists(list => 
       list.id === listId
-        ? { ...list, tasks: list.tasks.map(task => task.id === taskId ? { ...task, ...updates } : task) }
+        ? {
+            ...list,
+            tasks: list.tasks.map(task => 
+              task.id === taskId 
+                ? { ...task, ...updates, tags: Array.isArray(task.tags) ? task.tags : [] }
+                : task
+            )
+          }
         : list
     );
   }, [updateLists]);
@@ -43,11 +69,13 @@ const App = () => {
   }, [updateLists]);
 
   const addTag = useCallback((listId, taskId, newTag) => {
-    updateTask(listId, taskId, { tags: tags => [...tags, newTag] });
+    if (newTag.trim()) {
+      updateTask(listId, taskId, { tags: tags => Array.isArray(tags) ? [...tags, newTag.trim()] : [newTag.trim()] });
+    }
   }, [updateTask]);
 
   const deleteTag = useCallback((listId, taskId, tagToDelete) => {
-    updateTask(listId, taskId, { tags: tags => tags.filter(tag => tag !== tagToDelete) });
+    updateTask(listId, taskId, { tags: tags => Array.isArray(tags) ? tags.filter(tag => tag !== tagToDelete) : [] });
   }, [updateTask]);
 
   const moveTask = useCallback((taskId, sourceListId, direction) => {
@@ -75,14 +103,14 @@ const App = () => {
     lists.flatMap(list => 
       list.tasks.filter(task => 
         task.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (selectedTags.length === 0 || selectedTags.some(tag => task.tags.includes(tag)))
+        (selectedTags.length === 0 || (Array.isArray(task.tags) && selectedTags.some(tag => task.tags.includes(tag))))
       ).map(task => ({ ...task, listId: list.id }))
     ),
     [lists, searchTerm, selectedTags]
   );
 
   const allTags = useMemo(() => 
-    Array.from(new Set(lists.flatMap(list => list.tasks.flatMap(task => task.tags)))),
+    Array.from(new Set(lists.flatMap(list => list.tasks.flatMap(task => Array.isArray(task.tags) ? task.tags : [])))),
     [lists]
   );
 
@@ -130,7 +158,7 @@ const App = () => {
         placeholder="Descripción"
       />
       <div className="flex flex-wrap gap-2 mb-2">
-        {task.tags.map((tag, tagIndex) => (
+        {Array.isArray(task.tags) && task.tags.map((tag, tagIndex) => (
           <span key={tagIndex} className="bg-purple-600 px-2 py-1 rounded text-sm flex items-center">
             {tag}
             <button className="ml-1" onClick={() => deleteTag(task.listId, task.id, tag)}>
@@ -139,23 +167,37 @@ const App = () => {
           </span>
         ))}
       </div>
-      <div className="flex justify-between">
-        <button
-          className="text-green-400 flex items-center"
-          onClick={(e) => {
-            e.preventDefault();
-            const newTag = prompt('Ingrese nueva etiqueta:');
-            if (newTag) addTag(task.listId, task.id, newTag);
-          }}
-        >
-          <Tag size={16} className="mr-1" /> Añadir Tag
-        </button>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center">
+          <input
+            type="text"
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                addTag(task.listId, task.id, newTag);
+                setNewTag('');
+              }
+            }}
+            placeholder="Nueva etiqueta"
+            className="bg-gray-600 p-1 rounded mr-2"
+          />
+          <button
+            className="text-green-400 flex items-center"
+            onClick={() => {
+              addTag(task.listId, task.id, newTag);
+              setNewTag('');
+            }}
+          >
+            <Tag size={16} className="mr-1" /> Añadir
+          </button>
+        </div>
         <button className="text-red-400" onClick={() => deleteTask(task.listId, task.id)}>
           <Trash2 size={16} />
         </button>
       </div>
     </div>
-  ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length]);
+  ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length, newTag]);
 
   const renderList = useCallback((list, index) => (
     <div key={list.id} className="bg-gray-800 p-6 rounded-lg">
@@ -243,4 +285,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default CurselineToDo;
