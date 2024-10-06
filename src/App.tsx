@@ -1,6 +1,18 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+
+// Custom Alert component
+const Alert = ({ children, onClose }) => (
+  <div className="bg-red-600 text-white p-4 rounded-md flex justify-between items-center mb-4">
+    <div>{children}</div>
+    <button onClick={onClose} className="ml-4">
+      <XCircle size={20} />
+    </button>
+  </div>
+);
 
 const INITIAL_LISTS = [
   { id: '1', name: 'Por hacer', tasks: [] },
@@ -21,7 +33,7 @@ const CurselineToDo = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
   const [activeView, setActiveView] = useState('home');
-  const [newTag, setNewTag] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     try {
@@ -31,35 +43,89 @@ const CurselineToDo = () => {
     }
   }, [lists]);
 
+  const saveData = () => {
+    const data = localStorage.getItem('curselineLists');
+    if (data) {
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'curseline_data.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const importData = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (validateImportedData(importedData)) {
+            setLists(importedData);
+            setError('');
+          } else {
+            setError('El archivo JSON no tiene la estructura correcta.');
+          }
+        } catch (error) {
+          setError('El archivo no es un JSON válido.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const validateImportedData = (data) => {
+    if (!Array.isArray(data)) return false;
+    return data.every(list =>
+      typeof list === 'object' &&
+      list.hasOwnProperty('id') &&
+      list.hasOwnProperty('name') &&
+      Array.isArray(list.tasks) &&
+      list.tasks.every(task =>
+        typeof task === 'object' &&
+        task.hasOwnProperty('id') &&
+        task.hasOwnProperty('name') &&
+        task.hasOwnProperty('description') &&
+        Array.isArray(task.tags) &&
+        (task.dueDate === null || typeof task.dueDate === 'string')
+      )
+    );
+  };
+
   const updateLists = useCallback((updater) => {
     setLists(prevLists => prevLists.map(updater));
   }, []);
 
   const addTask = useCallback((listId) => {
-    updateLists(list => 
+    updateLists(list =>
       list.id === listId
-        ? { ...list, tasks: [...list.tasks, { id: Date.now().toString(), name: 'Nueva tarea', description: '', tags: [] }] }
+        ? { ...list, tasks: [...list.tasks, { id: Date.now().toString(), name: 'Nueva tarea', description: '', tags: [], dueDate: null }] }
         : list
     );
   }, [updateLists]);
 
   const updateTask = useCallback((listId, taskId, updates) => {
-    updateLists(list => 
+    updateLists(list =>
       list.id === listId
         ? {
-            ...list,
-            tasks: list.tasks.map(task => 
-              task.id === taskId 
-                ? { ...task, ...updates, tags: Array.isArray(task.tags) ? task.tags : [] }
-                : task
-            )
-          }
+          ...list,
+          tasks: list.tasks.map(task =>
+            task.id === taskId
+              ? { ...task, ...updates }
+              : task
+          )
+        }
         : list
     );
   }, [updateLists]);
 
   const deleteTask = useCallback((listId, taskId) => {
-    updateLists(list => 
+    updateLists(list =>
       list.id === listId
         ? { ...list, tasks: list.tasks.filter(task => task.id !== taskId) }
         : list
@@ -68,12 +134,12 @@ const CurselineToDo = () => {
 
   const addTag = useCallback((listId, taskId, newTag) => {
     if (newTag.trim()) {
-      updateTask(listId, taskId, { tags: tags => Array.isArray(tags) ? [...tags, newTag.trim()] : [newTag.trim()] });
+      updateTask(listId, taskId, { tags: tags => [...tags, newTag.trim()] });
     }
   }, [updateTask]);
 
   const deleteTag = useCallback((listId, taskId, tagToDelete) => {
-    updateTask(listId, taskId, { tags: tags => Array.isArray(tags) ? tags.filter(tag => tag !== tagToDelete) : [] });
+    updateTask(listId, taskId, { tags: tags => tags.filter(tag => tag !== tagToDelete) });
   }, [updateTask]);
 
   const moveTask = useCallback((taskId, sourceListId, direction) => {
@@ -81,13 +147,13 @@ const CurselineToDo = () => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
       const sourceListIndex = newLists.findIndex(list => list.id === sourceListId);
       const destListIndex = direction === 'right' ? sourceListIndex + 1 : sourceListIndex - 1;
-      
+
       if (destListIndex < 0 || destListIndex >= newLists.length) return prevLists;
 
       const sourceList = newLists[sourceListIndex];
       const destList = newLists[destListIndex];
       const taskIndex = sourceList.tasks.findIndex(task => task.id === taskId);
-      
+
       if (taskIndex === -1) return prevLists;
 
       const [movedTask] = sourceList.tasks.splice(taskIndex, 1);
@@ -97,29 +163,31 @@ const CurselineToDo = () => {
     });
   }, []);
 
-  const filteredTasks = useMemo(() => 
-    lists.flatMap(list => 
-      list.tasks.filter(task => 
+  const filteredTasks = useMemo(() =>
+    lists.flatMap(list =>
+      list.tasks.filter(task =>
         task.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        (selectedTags.length === 0 || (Array.isArray(task.tags) && selectedTags.some(tag => task.tags.includes(tag))))
+        (selectedTags.length === 0 || selectedTags.some(tag => task.tags.includes(tag)))
       ).map(task => ({ ...task, listId: list.id }))
     ),
     [lists, searchTerm, selectedTags]
   );
 
-  const allTags = useMemo(() => 
-    Array.from(new Set(lists.flatMap(list => list.tasks.flatMap(task => Array.isArray(task.tags) ? task.tags : [])))),
+  const allTags = useMemo(() =>
+    Array.from(new Set(lists.flatMap(list => list.tasks.flatMap(task => task.tags)))),
     [lists]
   );
 
-  const taskStats = useMemo(() => 
+  const taskStats = useMemo(() =>
     lists.map(list => ({ name: list.name, tasks: list.tasks.length })),
     [lists]
   );
 
   const completionStats = useMemo(() => [
-    { name: 'Estado', Completadas: lists.find(list => list.name === 'Completado')?.tasks.length || 0, 
-      Pendientes: lists.filter(list => list.name !== 'Completado').reduce((acc, list) => acc + list.tasks.length, 0) }
+    {
+      name: 'Estado', Completadas: lists.find(list => list.name === 'Completado')?.tasks.length || 0,
+      Pendientes: lists.filter(list => list.name !== 'Completado').reduce((acc, list) => acc + list.tasks.length, 0)
+    }
   ], [lists]);
 
   const renderTask = useCallback((task, listIndex) => (
@@ -156,7 +224,7 @@ const CurselineToDo = () => {
         placeholder="Descripción"
       />
       <div className="flex flex-wrap gap-2 mb-2">
-        {Array.isArray(task.tags) && task.tags.map((tag, tagIndex) => (
+        {task.tags.map((tag, tagIndex) => (
           <span key={tagIndex} className="bg-purple-600 px-2 py-1 rounded text-sm flex items-center">
             {tag}
             <button className="ml-1" onClick={() => deleteTag(task.listId, task.id, tag)}>
@@ -165,37 +233,45 @@ const CurselineToDo = () => {
           </span>
         ))}
       </div>
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center mb-2">
         <div className="flex items-center">
           <input
             type="text"
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                addTag(task.listId, task.id, newTag);
-                setNewTag('');
-              }
-            }}
             placeholder="Nueva etiqueta"
             className="bg-gray-600 p-1 rounded mr-2"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                addTag(task.listId, task.id, e.target.value);
+                e.target.value = '';
+              }
+            }}
           />
           <button
             className="text-green-400 flex items-center"
             onClick={() => {
-              addTag(task.listId, task.id, newTag);
-              setNewTag('');
+              const input = e.target.previousSibling;
+              addTag(task.listId, task.id, input.value);
+              input.value = '';
             }}
           >
             <Tag size={16} className="mr-1" /> Añadir
           </button>
         </div>
-        <button className="text-red-400" onClick={() => deleteTask(task.listId, task.id)}>
-          <Trash2 size={16} />
-        </button>
+        <div className="flex items-center">
+          <Calendar size={16} className="mr-2" />
+          <DatePicker
+            selected={task.dueDate ? new Date(task.dueDate) : null}
+            onChange={(date) => updateTask(task.listId, task.id, { dueDate: date ? date.toISOString() : null })}
+            className="bg-gray-600 p-1 rounded"
+            placeholderText="Fecha límite"
+          />
+        </div>
       </div>
+      <button className="text-red-400" onClick={() => deleteTask(task.listId, task.id)}>
+        <Trash2 size={16} />
+      </button>
     </div>
-  ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length, newTag]);
+  ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length]);
 
   const renderList = useCallback((list, index) => (
     <div key={list.id} className="bg-gray-800 p-6 rounded-lg">
@@ -219,9 +295,26 @@ const CurselineToDo = () => {
         <button onClick={() => setActiveView('charts')} className="mb-4">
           <BarChart size={24} />
         </button>
+        <button onClick={saveData} className="mb-4" title="Export Data">
+          <Save size={24} />
+        </button>
+        <label className="cursor-pointer mb-4" title="Import Data">
+          <Upload size={24} />
+          <input
+            type="file"
+            accept=".json"
+            onChange={importData}
+            style={{ display: 'none' }}
+          />
+        </label>
       </div>
       <div className="flex-1 p-8">
         <h1 className="text-4xl font-bold mb-8">Curseline</h1>
+        {error && (
+          <Alert onClose={() => setError('')}>
+            {error}
+          </Alert>
+        )}
         {activeView === 'home' ? (
           <>
             <div className="mb-8">
@@ -238,12 +331,10 @@ const CurselineToDo = () => {
               <div className="flex flex-wrap gap-2">
                 {allTags.map(tag => (
                   <button
-                    /* @ts-ignore */
                     key={tag}
                     onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
                     className={`px-2 py-1 rounded ${selectedTags.includes(tag) ? 'bg-purple-600' : 'bg-gray-700'}`}
                   >
-                    {/* @ts-ignore */}
                     {tag}
                   </button>
                 ))}
