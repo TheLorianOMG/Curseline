@@ -5,7 +5,21 @@ import { Timeline, TimelineEvent } from 'react-event-timeline';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-const Alert = ({ children, onClose }) => (
+interface Task {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  dueDate: string | null;
+}
+
+interface List {
+  id: string;
+  name: string;
+  tasks: Task[];
+}
+
+const Alert: React.FC<{ children: React.ReactNode; onClose: () => void }> = ({ children, onClose }) => (
   <div className="bg-red-900 text-red-100 p-4 rounded-md flex justify-between items-center mb-4 shadow-lg">
     <div>{children}</div>
     <button onClick={onClose} className="ml-4 hover:text-red-300 transition-colors">
@@ -14,14 +28,14 @@ const Alert = ({ children, onClose }) => (
   </div>
 );
 
-const INITIAL_LISTS = [
+const INITIAL_LISTS: List[] = [
   { id: '1', name: 'Por hacer', tasks: [] },
   { id: '2', name: 'En progreso', tasks: [] },
   { id: '3', name: 'Completado', tasks: [] },
 ];
 
-const CurselineToDo = () => {
-  const [lists, setLists] = useState(() => {
+const CurselineToDo: React.FC = () => {
+  const [lists, setLists] = useState<List[]>(() => {
     try {
       const savedLists = localStorage.getItem('curselineLists');
       return savedLists ? JSON.parse(savedLists) : INITIAL_LISTS;
@@ -31,7 +45,7 @@ const CurselineToDo = () => {
     }
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [activeView, setActiveView] = useState('home');
   const [error, setError] = useState('');
 
@@ -58,18 +72,21 @@ const CurselineToDo = () => {
     }
   };
 
-  const importData = (event) => {
-    const file = event.target.files[0];
+  const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const importedData = JSON.parse(e.target.result);
-          if (validateImportedData(importedData)) {
-            setLists(importedData);
-            setError('');
-          } else {
-            setError('El archivo JSON no tiene la estructura correcta.');
+          const result = e.target?.result;
+          if (typeof result === 'string') {
+            const importedData = JSON.parse(result);
+            if (validateImportedData(importedData)) {
+              setLists(importedData);
+              setError('');
+            } else {
+              setError('El archivo JSON no tiene la estructura correcta.');
+            }
           }
         } catch (error) {
           setError('El archivo no es un JSON válido.');
@@ -79,29 +96,29 @@ const CurselineToDo = () => {
     }
   };
 
-  const validateImportedData = (data) => {
+  const validateImportedData = (data: any): data is List[] => {
     if (!Array.isArray(data)) return false;
     return data.every(list => 
       typeof list === 'object' &&
-      list.hasOwnProperty('id') &&
-      list.hasOwnProperty('name') &&
+      'id' in list &&
+      'name' in list &&
       Array.isArray(list.tasks) &&
-      list.tasks.every(task => 
+      list.tasks.every((task: any) => 
         typeof task === 'object' &&
-        task.hasOwnProperty('id') &&
-        task.hasOwnProperty('name') &&
-        task.hasOwnProperty('description') &&
+        'id' in task &&
+        'name' in task &&
+        'description' in task &&
         Array.isArray(task.tags) &&
         (task.dueDate === null || typeof task.dueDate === 'string')
       )
     );
   };
 
-  const updateLists = useCallback((updater) => {
+  const updateLists = useCallback((updater: (list: List) => List) => {
     setLists(prevLists => prevLists.map(updater));
   }, []);
 
-  const addTask = useCallback((listId) => {
+  const addTask = useCallback((listId: string) => {
     updateLists(list => 
       list.id === listId
         ? { ...list, tasks: [...list.tasks, { id: Date.now().toString(), name: 'Nueva tarea', description: '', tags: [], dueDate: null }] }
@@ -109,7 +126,7 @@ const CurselineToDo = () => {
     );
   }, [updateLists]);
 
-  const updateTask = useCallback((listId, taskId, updates) => {
+  const updateTask = useCallback((listId: string, taskId: string, updates: Partial<Task>) => {
     updateLists(list => 
       list.id === listId
         ? {
@@ -124,7 +141,7 @@ const CurselineToDo = () => {
     );
   }, [updateLists]);
 
-  const deleteTask = useCallback((listId, taskId) => {
+  const deleteTask = useCallback((listId: string, taskId: string) => {
     updateLists(list => 
       list.id === listId
         ? { ...list, tasks: list.tasks.filter(task => task.id !== taskId) }
@@ -132,27 +149,27 @@ const CurselineToDo = () => {
     );
   }, [updateLists]);
 
-  const addTag = useCallback((listId, taskId, newTag) => {
+  const addTag = useCallback((listId: string, taskId: string, newTag: string) => {
     if (newTag.trim()) {
-      updateTask(listId, taskId, { tags: tags => [...tags, newTag.trim()] });
+      updateTask(listId, taskId, { tags: tags => [...(tags || []), newTag.trim()] });
     }
   }, [updateTask]);
 
-  const deleteTag = useCallback((listId, taskId, tagToDelete) => {
-    updateTask(listId, taskId, { tags: tags => tags.filter(tag => tag !== tagToDelete) });
+  const deleteTag = useCallback((listId: string, taskId: string, tagToDelete: string) => {
+    updateTask(listId, taskId, { tags: tags => (tags || []).filter(tag => tag !== tagToDelete) });
   }, [updateTask]);
 
-  const moveTask = useCallback((taskId, sourceListId, direction) => {
+  const moveTask = useCallback((taskId: string, sourceListId: string, direction: 'left' | 'right') => {
     setLists(prevLists => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
-      const sourceListIndex = newLists.findIndex(list => list.id === sourceListId);
+      const sourceListIndex = newLists.findIndex((list: List) => list.id === sourceListId);
       const destListIndex = direction === 'right' ? sourceListIndex + 1 : sourceListIndex - 1;
       
       if (destListIndex < 0 || destListIndex >= newLists.length) return prevLists;
 
       const sourceList = newLists[sourceListIndex];
       const destList = newLists[destListIndex];
-      const taskIndex = sourceList.tasks.findIndex(task => task.id === taskId);
+      const taskIndex = sourceList.tasks.findIndex((task: Task) => task.id === taskId);
       
       if (taskIndex === -1) return prevLists;
 
@@ -192,14 +209,14 @@ const CurselineToDo = () => {
     return lists
       .flatMap(list => list.tasks.map(task => ({ ...task, listName: list.name })))
       .filter(task => task.dueDate)
-      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+      .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
   }, [lists]);
 
   const timelineData = useMemo(() => {
     const today = new Date();
     return sortedTasksWithDates.map(task => ({
       ...task,
-      isOverdue: new Date(task.dueDate) < today
+      isOverdue: new Date(task.dueDate!) < today
     }));
   }, [sortedTasksWithDates]);
 
@@ -211,12 +228,12 @@ const CurselineToDo = () => {
           <TimelineEvent
             key={task.id}
             title={task.name}
-            createdAt={new Date(task.dueDate).toLocaleDateString()}
+            createdAt={new Date(task.dueDate!).toLocaleDateString()}
             icon={<Calendar />}
             iconColor={task.isOverdue ? "#EF4B45" : "#45EFAB"}
             style={{ 
               color: task.isOverdue ? "#EF4B45" : "inherit",
-              backgroundColor: '#C7C7C7FF',
+              backgroundColor: 'rgba(75, 85, 99, 0.3)',
               padding: '1rem',
               borderRadius: '0.5rem',
               marginBottom: '1rem'
@@ -228,8 +245,8 @@ const CurselineToDo = () => {
               border: 'none'
             }}
           >
-            <p className="text-gray-700">{task.description}</p>
-            <p className="text-gray-800 mt-2">Lista: {task.listName}</p>
+            <p className="text-gray-300">{task.description}</p>
+            <p className="text-gray-400 mt-2">Lista: {task.listName}</p>
             <div className="flex flex-wrap gap-2 mt-2">
               {task.tags.map((tag, index) => (
                 <span key={index} className="bg-purple-700 px-2 py-1 rounded text-sm text-purple-100">
@@ -243,7 +260,7 @@ const CurselineToDo = () => {
     </div>
   );
 
-  const renderTask = useCallback((task, listIndex) => (
+  const renderTask = useCallback((task: Task & { listId: string }, listIndex: number) => (
     <div key={task.id} className="bg-gray-700 p-4 rounded-lg mb-4 shadow-md hover:shadow-lg transition-shadow duration-300">
       <div className="flex justify-between items-center mb-2">
         <input
@@ -292,17 +309,17 @@ const CurselineToDo = () => {
             type="text"
             placeholder="Nueva etiqueta"
             className="bg-gray-600 p-1 rounded mr-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow duration-300"
-            onKeyPress={(e) => {
+            onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === 'Enter') {
-                addTag(task.listId, task.id, e.target.value);
-                e.target.value = '';
+                addTag(task.listId, task.id, e.currentTarget.value);
+                e.currentTarget.value = '';
               }
             }}
           />
           <button
             className="text-green-400 flex items-center hover:text-green-300 transition-colors duration-300"
-            onClick={(e) => {
-              const input = e.target.previousSibling;
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              const input = e.currentTarget.previousElementSibling as HTMLInputElement;
               addTag(task.listId, task.id, input.value);
               input.value = '';
             }}
@@ -314,7 +331,7 @@ const CurselineToDo = () => {
           <Calendar size={16} className="mr-2 text-gray-400" />
           <DatePicker
             selected={task.dueDate ? new Date(task.dueDate) : null}
-            onChange={(date) => updateTask(task.listId, task.id, { dueDate: date ? date.toISOString() : null })}
+            onChange={(date: Date | null) => updateTask(task.listId, task.id, { dueDate: date ? date.toISOString() : null })}
             className="bg-gray-600 p-1 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow duration-300"
             placeholderText="Fecha límite"
           />
@@ -326,7 +343,7 @@ const CurselineToDo = () => {
     </div>
   ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length]);
 
-  const renderList = useCallback((list, index) => (
+  const renderList = useCallback((list: List, index: number) => (
     <div key={list.id} className="bg-gray-800 p-6 rounded-lg shadow-lg">
       <h2 className="text-2xl font-semibold mb-4 text-gray-100">{list.name}</h2>
       {filteredTasks.filter(task => task.listId === list.id).map(task => renderTask(task, index))}
