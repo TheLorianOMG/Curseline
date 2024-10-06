@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Timeline, TimelineEvent } from 'react-event-timeline';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-// Custom Alert component
 const Alert = ({ children, onClose }) => (
-  <div className="bg-red-600 text-white p-4 rounded-md flex justify-between items-center mb-4">
+  <div className="bg-red-900 text-red-100 p-4 rounded-md flex justify-between items-center mb-4 shadow-lg">
     <div>{children}</div>
-    <button onClick={onClose} className="ml-4">
+    <button onClick={onClose} className="ml-4 hover:text-red-300 transition-colors">
       <XCircle size={20} />
     </button>
   </div>
@@ -81,12 +81,12 @@ const CurselineToDo = () => {
 
   const validateImportedData = (data) => {
     if (!Array.isArray(data)) return false;
-    return data.every(list =>
+    return data.every(list => 
       typeof list === 'object' &&
       list.hasOwnProperty('id') &&
       list.hasOwnProperty('name') &&
       Array.isArray(list.tasks) &&
-      list.tasks.every(task =>
+      list.tasks.every(task => 
         typeof task === 'object' &&
         task.hasOwnProperty('id') &&
         task.hasOwnProperty('name') &&
@@ -102,7 +102,7 @@ const CurselineToDo = () => {
   }, []);
 
   const addTask = useCallback((listId) => {
-    updateLists(list =>
+    updateLists(list => 
       list.id === listId
         ? { ...list, tasks: [...list.tasks, { id: Date.now().toString(), name: 'Nueva tarea', description: '', tags: [], dueDate: null }] }
         : list
@@ -110,22 +110,22 @@ const CurselineToDo = () => {
   }, [updateLists]);
 
   const updateTask = useCallback((listId, taskId, updates) => {
-    updateLists(list =>
+    updateLists(list => 
       list.id === listId
         ? {
-          ...list,
-          tasks: list.tasks.map(task =>
-            task.id === taskId
-              ? { ...task, ...updates }
-              : task
-          )
-        }
+            ...list,
+            tasks: list.tasks.map(task => 
+              task.id === taskId 
+                ? { ...task, ...updates }
+                : task
+            )
+          }
         : list
     );
   }, [updateLists]);
 
   const deleteTask = useCallback((listId, taskId) => {
-    updateLists(list =>
+    updateLists(list => 
       list.id === listId
         ? { ...list, tasks: list.tasks.filter(task => task.id !== taskId) }
         : list
@@ -147,13 +147,13 @@ const CurselineToDo = () => {
       const newLists = JSON.parse(JSON.stringify(prevLists));
       const sourceListIndex = newLists.findIndex(list => list.id === sourceListId);
       const destListIndex = direction === 'right' ? sourceListIndex + 1 : sourceListIndex - 1;
-
+      
       if (destListIndex < 0 || destListIndex >= newLists.length) return prevLists;
 
       const sourceList = newLists[sourceListIndex];
       const destList = newLists[destListIndex];
       const taskIndex = sourceList.tasks.findIndex(task => task.id === taskId);
-
+      
       if (taskIndex === -1) return prevLists;
 
       const [movedTask] = sourceList.tasks.splice(taskIndex, 1);
@@ -163,9 +163,9 @@ const CurselineToDo = () => {
     });
   }, []);
 
-  const filteredTasks = useMemo(() =>
-    lists.flatMap(list =>
-      list.tasks.filter(task =>
+  const filteredTasks = useMemo(() => 
+    lists.flatMap(list => 
+      list.tasks.filter(task => 
         task.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
         (selectedTags.length === 0 || selectedTags.some(tag => task.tags.includes(tag)))
       ).map(task => ({ ...task, listId: list.id }))
@@ -173,35 +173,88 @@ const CurselineToDo = () => {
     [lists, searchTerm, selectedTags]
   );
 
-  const allTags = useMemo(() =>
+  const allTags = useMemo(() => 
     Array.from(new Set(lists.flatMap(list => list.tasks.flatMap(task => task.tags)))),
     [lists]
   );
 
-  const taskStats = useMemo(() =>
+  const taskStats = useMemo(() => 
     lists.map(list => ({ name: list.name, tasks: list.tasks.length })),
     [lists]
   );
 
   const completionStats = useMemo(() => [
-    {
-      name: 'Estado', Completadas: lists.find(list => list.name === 'Completado')?.tasks.length || 0,
-      Pendientes: lists.filter(list => list.name !== 'Completado').reduce((acc, list) => acc + list.tasks.length, 0)
-    }
+    { name: 'Estado', Completadas: lists.find(list => list.name === 'Completado')?.tasks.length || 0, 
+      Pendientes: lists.filter(list => list.name !== 'Completado').reduce((acc, list) => acc + list.tasks.length, 0) }
   ], [lists]);
 
+  const sortedTasksWithDates = useMemo(() => {
+    return lists
+      .flatMap(list => list.tasks.map(task => ({ ...task, listName: list.name })))
+      .filter(task => task.dueDate)
+      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  }, [lists]);
+
+  const timelineData = useMemo(() => {
+    const today = new Date();
+    return sortedTasksWithDates.map(task => ({
+      ...task,
+      isOverdue: new Date(task.dueDate) < today
+    }));
+  }, [sortedTasksWithDates]);
+
+  const renderTimeline = () => (
+    <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-100">Línea de Tiempo de Tareas</h2>
+      <Timeline>
+        {timelineData.map(task => (
+          <TimelineEvent
+            key={task.id}
+            title={task.name}
+            createdAt={new Date(task.dueDate).toLocaleDateString()}
+            icon={<Calendar />}
+            iconColor={task.isOverdue ? "#EF4B45" : "#45EFAB"}
+            style={{ 
+              color: task.isOverdue ? "#EF4B45" : "inherit",
+              backgroundColor: '#C7C7C7FF',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              marginBottom: '1rem'
+            }}
+            contentStyle={{
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              padding: 0,
+              border: 'none'
+            }}
+          >
+            <p className="text-gray-700">{task.description}</p>
+            <p className="text-gray-800 mt-2">Lista: {task.listName}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {task.tags.map((tag, index) => (
+                <span key={index} className="bg-purple-700 px-2 py-1 rounded text-sm text-purple-100">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </TimelineEvent>
+        ))}
+      </Timeline>
+    </div>
+  );
+
   const renderTask = useCallback((task, listIndex) => (
-    <div key={task.id} className="bg-gray-700 p-4 rounded-lg mb-4">
+    <div key={task.id} className="bg-gray-700 p-4 rounded-lg mb-4 shadow-md hover:shadow-lg transition-shadow duration-300">
       <div className="flex justify-between items-center mb-2">
         <input
-          className="bg-transparent border-b border-gray-500 flex-grow mr-2 text-lg"
+          className="bg-transparent border-b border-gray-500 flex-grow mr-2 text-lg text-gray-100 focus:outline-none focus:border-purple-500 transition-colors duration-300"
           value={task.name}
           onChange={(e) => updateTask(task.listId, task.id, { name: e.target.value })}
         />
         <div className="flex">
           {listIndex > 0 && (
             <button
-              className="text-blue-400 mr-2"
+              className="text-blue-400 mr-2 hover:text-blue-300 transition-colors duration-300"
               onClick={() => moveTask(task.id, task.listId, 'left')}
             >
               <ChevronLeft size={20} />
@@ -209,7 +262,7 @@ const CurselineToDo = () => {
           )}
           {listIndex < lists.length - 1 && (
             <button
-              className="text-blue-400"
+              className="text-blue-400 hover:text-blue-300 transition-colors duration-300"
               onClick={() => moveTask(task.id, task.listId, 'right')}
             >
               <ChevronRight size={20} />
@@ -218,16 +271,16 @@ const CurselineToDo = () => {
         </div>
       </div>
       <textarea
-        className="bg-gray-600 w-full p-2 rounded mb-2"
+        className="bg-gray-600 w-full p-2 rounded mb-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow duration-300"
         value={task.description}
         onChange={(e) => updateTask(task.listId, task.id, { description: e.target.value })}
         placeholder="Descripción"
       />
       <div className="flex flex-wrap gap-2 mb-2">
         {task.tags.map((tag, tagIndex) => (
-          <span key={tagIndex} className="bg-purple-600 px-2 py-1 rounded text-sm flex items-center">
+          <span key={tagIndex} className="bg-purple-700 px-2 py-1 rounded text-sm text-purple-100 flex items-center">
             {tag}
-            <button className="ml-1" onClick={() => deleteTag(task.listId, task.id, tag)}>
+            <button className="ml-1 text-purple-200 hover:text-purple-100 transition-colors duration-300" onClick={() => deleteTag(task.listId, task.id, tag)}>
               <Trash2 size={12} />
             </button>
           </span>
@@ -238,7 +291,7 @@ const CurselineToDo = () => {
           <input
             type="text"
             placeholder="Nueva etiqueta"
-            className="bg-gray-600 p-1 rounded mr-2"
+            className="bg-gray-600 p-1 rounded mr-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow duration-300"
             onKeyPress={(e) => {
               if (e.key === 'Enter') {
                 addTag(task.listId, task.id, e.target.value);
@@ -247,8 +300,8 @@ const CurselineToDo = () => {
             }}
           />
           <button
-            className="text-green-400 flex items-center"
-            onClick={() => {
+            className="text-green-400 flex items-center hover:text-green-300 transition-colors duration-300"
+            onClick={(e) => {
               const input = e.target.previousSibling;
               addTag(task.listId, task.id, input.value);
               input.value = '';
@@ -258,27 +311,27 @@ const CurselineToDo = () => {
           </button>
         </div>
         <div className="flex items-center">
-          <Calendar size={16} className="mr-2" />
+          <Calendar size={16} className="mr-2 text-gray-400" />
           <DatePicker
             selected={task.dueDate ? new Date(task.dueDate) : null}
             onChange={(date) => updateTask(task.listId, task.id, { dueDate: date ? date.toISOString() : null })}
-            className="bg-gray-600 p-1 rounded"
+            className="bg-gray-600 p-1 rounded text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-shadow duration-300"
             placeholderText="Fecha límite"
           />
         </div>
       </div>
-      <button className="text-red-400" onClick={() => deleteTask(task.listId, task.id)}>
+      <button className="text-red-400 hover:text-red-300 transition-colors duration-300" onClick={() => deleteTask(task.listId, task.id)}>
         <Trash2 size={16} />
       </button>
     </div>
   ), [updateTask, deleteTag, addTag, deleteTask, moveTask, lists.length]);
 
   const renderList = useCallback((list, index) => (
-    <div key={list.id} className="bg-gray-800 p-6 rounded-lg">
-      <h2 className="text-2xl font-semibold mb-4">{list.name}</h2>
+    <div key={list.id} className="bg-gray-800 p-6 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-semibold mb-4 text-gray-100">{list.name}</h2>
       {filteredTasks.filter(task => task.listId === list.id).map(task => renderTask(task, index))}
       <button
-        className="w-full bg-purple-600 py-2 rounded-lg mt-4 flex items-center justify-center"
+        className="w-full bg-purple-600 py-2 rounded-lg mt-4 flex items-center justify-center text-white hover:bg-purple-500 transition-colors duration-300"
         onClick={() => addTask(list.id)}
       >
         <Plus size={20} className="mr-2" /> Añadir Tarea
@@ -287,18 +340,21 @@ const CurselineToDo = () => {
   ), [filteredTasks, renderTask, addTask]);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-[#593873] to-black text-white">
-      <div className="bg-gray-900 w-20 p-4 flex flex-col items-center">
-        <button onClick={() => setActiveView('home')} className="mb-4">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100">
+      <div className="bg-gray-900 w-20 p-4 flex flex-col items-center border-r border-gray-700">
+        <button onClick={() => setActiveView('home')} className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
           <Home size={24} />
         </button>
-        <button onClick={() => setActiveView('charts')} className="mb-4">
+        <button onClick={() => setActiveView('charts')} className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
           <BarChart size={24} />
         </button>
-        <button onClick={saveData} className="mb-4" title="Export Data">
+        <button onClick={() => setActiveView('timeline')} className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
+          <Calendar size={24} />
+        </button>
+        <button onClick={saveData} className="mb-6 text-gray-400 hover:text-white transition-colors duration-300" title="Export Data">
           <Save size={24} />
         </button>
-        <label className="cursor-pointer mb-4" title="Import Data">
+        <label className="cursor-pointer mb-6 text-gray-400 hover:text-white transition-colors duration-300" title="Import Data">
           <Upload size={24} />
           <input
             type="file"
@@ -308,8 +364,8 @@ const CurselineToDo = () => {
           />
         </label>
       </div>
-      <div className="flex-1 p-8">
-        <h1 className="text-4xl font-bold mb-8">Curseline</h1>
+      <div className="flex-1 p-8 overflow-auto">
+        <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Curseline</h1>
         {error && (
           <Alert onClose={() => setError('')}>
             {error}
@@ -318,12 +374,12 @@ const CurselineToDo = () => {
         {activeView === 'home' ? (
           <>
             <div className="mb-8">
-              <div className="flex items-center bg-gray-700 rounded-lg p-2 mb-4">
-                <Search className="mr-2" />
+              <div className="flex items-center bg-gray-700 rounded-lg p-2 mb-4 focus-within:ring-2 focus-within:ring-purple-500 transition-shadow duration-300">
+                <Search className="mr-2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Buscar tareas..."
-                  className="bg-transparent outline-none flex-1"
+                  className="bg-transparent outline-none flex-1 text-gray-100"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -333,7 +389,11 @@ const CurselineToDo = () => {
                   <button
                     key={tag}
                     onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
-                    className={`px-2 py-1 rounded ${selectedTags.includes(tag) ? 'bg-purple-600' : 'bg-gray-700'}`}
+                    className={`px-2 py-1 rounded text-sm ${
+                      selectedTags.includes(tag) 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    } transition-colors duration-300`}
                   >
                     {tag}
                   </button>
@@ -344,32 +404,34 @@ const CurselineToDo = () => {
               {lists.map((list, index) => renderList(list, index))}
             </div>
           </>
-        ) : (
+        ) : activeView === 'charts' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Tareas por Lista</h2>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-100">Tareas por Lista</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsBarChart data={taskStats}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="tasks" fill="#8884d8" />
+                  <XAxis dataKey="name" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip contentStyle={{ backgroundColor: '#374151', border: 'none' }} />
+                  <Bar dataKey="tasks" fill="#8B5CF6" />
                 </RechartsBarChart>
               </ResponsiveContainer>
             </div>
-            <div className="bg-gray-800 p-6 rounded-lg">
-              <h2 className="text-2xl font-semibold mb-4">Estado de Tareas</h2>
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-100">Estado de Tareas</h2>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsBarChart data={completionStats}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="Completadas" fill="#82ca9d" />
-                  <Bar dataKey="Pendientes" fill="#8884d8" />
+                  <XAxis dataKey="name" stroke="#9CA3AF" />
+                  <YAxis stroke="#9CA3AF" />
+                  <Tooltip contentStyle={{ backgroundColor: '#374151', border: 'none' }} />
+                  <Bar dataKey="Completadas" fill="#10B981" />
+                  <Bar dataKey="Pendientes" fill="#EF4444" />
                 </RechartsBarChart>
               </ResponsiveContainer>
             </div>
           </div>
+        ) : (
+          renderTimeline()
         )}
       </div>
     </div>
