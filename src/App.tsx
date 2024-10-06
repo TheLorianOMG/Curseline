@@ -228,39 +228,41 @@ const CurselineToDo: React.FC = () => {
     <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
       <h2 className="text-2xl font-semibold mb-4 text-gray-100">Línea de Tiempo de Tareas</h2>
       <Timeline>
-        {timelineData.map(task => (
-          <TimelineEvent
-            key={task.id}
-            title={task.name}
-            createdAt={new Date(task.dueDate!).toLocaleDateString()}
-            icon={<Calendar />}
-            iconColor={task.isOverdue ? "#EF4B45" : "#45EFAB"}
-            style={{
-              color: task.isOverdue ? "#EF4B45" : "inherit",
-              backgroundColor: 'rgba(75, 85, 99, 0.3)',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              marginBottom: '1rem'
-            }}
-            contentStyle={{
-              backgroundColor: 'transparent',
-              boxShadow: 'none',
-              padding: 0,
-              border: 'none'
-            }}
-          >
-            <p className="text-gray-300">{task.description}</p>
-            <p className="text-gray-400 mt-2">Lista: {task.listName}</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {task.tags.map((tag, index) => (
-                <span key={index} className="bg-purple-700 px-2 py-1 rounded text-sm text-purple-100">
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </TimelineEvent>
-        ))}
-      </Timeline>
+      {timelineData.map(task => (
+        <TimelineEvent
+        key={task.id}
+        title={
+          <span style={{ color: '#E5E7EB', fontSize: '1.1em' }}>{task.name}</span>
+        }
+        createdAt={
+          <span style={{ color: '#9CA3AF' }}>{new Date(task.dueDate!).toLocaleDateString()}</span>
+        }
+        icon={<Calendar />}
+        iconColor={task.isOverdue ? "#EF4B45" : "#45EFAB"}
+        bubbleStyle={{
+          borderColor: task.isOverdue ? "#EF4B45" : "#45EFAB",
+        }}
+        contentStyle={{
+          backgroundColor: 'rgba(75, 85, 99, 0.3)',
+          boxShadow: 'none',
+          border: 'none',
+          borderRadius: '0.5rem',
+          padding: '1rem',
+        }}
+        className="custom-timeline-event"
+      >
+        <p className="text-gray-300">{task.description}</p>
+        <p className="text-gray-400 mt-2">Lista: {task.listName}</p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {task.tags.map((tag, index) => (
+            <span key={index} className="bg-purple-700 px-2 py-1 rounded text-sm text-purple-100">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </TimelineEvent>
+      ))}
+    </Timeline>
     </div>
   );
 
