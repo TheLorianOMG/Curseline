@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar } from 'lucide-react';
+import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar, Zap, Orbit } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Link } from 'react-router-dom';
 import { Timeline, TimelineEvent } from 'react-event-timeline';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -386,6 +387,19 @@ const CurselineToDo: React.FC = () => {
             style={{ display: 'none' }}
           />
         </label>
+        <br />
+        <hr />
+        <Link to="/energy">
+        <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
+          <Zap size={24} />
+        </button>
+        </Link>
+        <Link to="/plan">
+        <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
+          <Orbit size={24} />
+        </button>
+        </Link>
+
       </div>
       <div className="flex-1 p-8 overflow-auto">
         <h1 className="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">Curseline</h1>
