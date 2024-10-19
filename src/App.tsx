@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar, Zap, Orbit } from 'lucide-react';
+import { Trash2, Plus, Tag, Search, Home, BarChart, ChevronLeft, ChevronRight, Save, Upload, XCircle, Calendar, Zap, Orbit, Coins } from 'lucide-react';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Link } from 'react-router-dom';
 import { Timeline, TimelineEvent } from 'react-event-timeline';
@@ -397,6 +397,11 @@ const CurselineToDo: React.FC = () => {
         <Link to="/plan">
         <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
           <Orbit size={24} />
+        </button>
+        </Link>
+        <Link to="/savings">
+        <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
+          <Coins size={24} />
         </button>
         </Link>
 
