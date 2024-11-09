@@ -403,6 +403,10 @@ const CurselineToDo: React.FC = () => {
         <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
           <Coins size={24} />
         </button>
+        <Link to="/multijob-savings">
+        <button className="mb-6 text-gray-400 hover:text-white transition-colors duration-300">
+          <Coins size={24} />
+        </button>
         </Link>
 
       </div>
