@@ -212,6 +212,7 @@ const SavingsCalculator = () => {
                   fill="#8884d8"
                   dataKey="amount"
                 >
+                  {/* @ts-ignore */}
                   {expenses.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
