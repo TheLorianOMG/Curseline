@@ -29,6 +29,11 @@ const SavingsCalculator = () => {
   const weeklyEarnings = dailyEarnings * daysPerWeek;
   const monthlyEarnings = weeklyEarnings * 4.3;
 
+  // Cálculos de tiempo
+  const daysToGoal = Math.ceil(totalCost / dailyEarnings);
+  const weeksToGoal = Math.ceil(totalCost / weeklyEarnings);
+  const monthsToGoal = Math.ceil(totalCost / monthlyEarnings);
+
   useEffect(() => {
     const weeksToGoal = Math.ceil(totalCost / weeklyEarnings);
     
@@ -90,7 +95,7 @@ const SavingsCalculator = () => {
                 value={[hoursPerDay]}
                 onValueChange={([value]) => setHoursPerDay(value)}
                 min={1}
-                max={8}
+                max={24}
                 step={0.5}
               />
               <span>{hoursPerDay}</span>
@@ -127,6 +132,21 @@ const SavingsCalculator = () => {
           <div className="mb-6">
             <h3 className="font-semibold mb-2">Progreso hacia la meta</h3>
             <Progress value={(weeklyEarnings / totalCost) * 100} className="w-full" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-6 p-4 bg-gray-100 rounded-lg">
+            <div>
+              <h3 className="font-semibold text-sm">Tiempo estimado (días)</h3>
+              <p className="text-lg">{daysToGoal} días</p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Tiempo estimado (semanas)</h3>
+              <p className="text-lg">{weeksToGoal} semanas</p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm">Tiempo estimado (meses)</h3>
+              <p className="text-lg">{monthsToGoal} meses</p>
+            </div>
           </div>
 
           <div className="h-80 w-full mb-6">
@@ -192,7 +212,6 @@ const SavingsCalculator = () => {
                   fill="#8884d8"
                   dataKey="amount"
                 >
-                  {/* @ts-ignore */}
                   {expenses.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -208,8 +227,14 @@ const SavingsCalculator = () => {
       <div className="mt-6">
         <h3 className="font-semibold mb-2">Resumen</h3>
         <p>
-          Con tu configuración actual, necesitarás aproximadamente {data.length} semanas para alcanzar tu objetivo de ahorro de ${totalCost.toFixed(2)}.
+          Con tu configuración actual, necesitarás:
         </p>
+        <ul className="list-disc ml-6 mt-2">
+          <li>{daysToGoal} días</li>
+          <li>{weeksToGoal} semanas</li>
+          <li>{monthsToGoal} meses</li>
+        </ul>
+        <p className="mt-2">para alcanzar tu objetivo de ahorro de ${totalCost.toFixed(2)}.</p>
         <p className="mt-2">
           Consejo: Revisa tus gastos regularmente y busca áreas donde puedas reducir costos. Cada pequeño ahorro te acerca más rápido a tu meta.
         </p>
