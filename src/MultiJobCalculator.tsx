@@ -180,7 +180,7 @@ const MultiJobCalculator = () => {
                       <Label>Días por semana</Label>
                       <Slider
                         value={[job.daysPerWeek]}
-                        onValueChange={([value]) => updateJob(job.id, 'daysPerDay', value)}
+                        onValueChange={([value]) => updateJob(job.id, 'daysPerWeek', value)}
                         min={1}
                         max={7}
                         step={1}
